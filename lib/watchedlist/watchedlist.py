@@ -49,7 +49,7 @@ import base64
 import xbmc
 import xbmcgui
 import xbmcvfs
-import mysql.connector
+import pymysql
 import buggalo
 
 import lib.watchedlist.utils as utils
@@ -462,7 +462,7 @@ class WatchedList:
                 self.sqlcursor_wl = self.sqlcon_wl.cursor()
             else:
                 # MySQL Database on a server
-                self.sqlcon_wl = mysql.connector.connect(user=utils.getSetting("mysql_user"), password=utils.getSetting("mysql_pass"), database=utils.getSetting("mysql_db"), host=utils.getSetting("mysql_server"), port=utils.getSetting("mysql_port"))
+                self.sqlcon_wl = pymysql.connect(user=utils.getSetting("mysql_user"), password=utils.getSetting("mysql_pass"), db=utils.getSetting("mysql_db"), host=utils.getSetting("mysql_server"), port=int(utils.getSetting("mysql_port")))
                 self.sqlcursor_wl = self.sqlcon_wl.cursor()
 
             # create tables if they don't exist
@@ -502,17 +502,17 @@ class WatchedList:
             self.close_db(3)
             buggalo.addExtraData('db_connstatus', 'sqlite3 error, closed')
             return 1
-        except mysql.connector.Error as err:
+        except pymysql.Error as err:
             # Catch common mysql errors and show them to guide the user
-            utils.log(u"Database error while opening mySQL DB %s [%s:%s@%s]. %s" % (utils.getSetting("mysql_db"), utils.getSetting("mysql_user"), utils.getSetting("mysql_pass"), utils.getSetting("mysql_db"), err.msg.decode('utf-8')), xbmc.LOGERROR)
-            if err.errno == mysql.connector.errorcode.ER_DBACCESS_DENIED_ERROR:
+            utils.log(u"Database error while opening mySQL DB %s [%s:%s@%s]. %s" % (utils.getSetting("mysql_db"), utils.getSetting("mysql_user"), utils.getSetting("mysql_pass"), utils.getSetting("mysql_server"), err.args[1]), xbmc.LOGERROR)
+            if err.args[0] == pymysql.constants.ER.DBACCESS_DENIED_ERROR:
                 utils.showNotification(utils.getString(32108), utils.getString(32210) % (utils.getSetting("mysql_user"), utils.getSetting("mysql_db")), xbmc.LOGERROR)
-            elif err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+            elif err.args[0] == pymysql.constants.ER.ACCESS_DENIED_ERROR:
                 utils.showNotification(utils.getString(32108), utils.getString(32208), xbmc.LOGERROR)
-            elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+            elif err.args[0] == pymysql.constants.ER.BAD_DB_ERROR:
                 utils.showNotification(utils.getString(32108), utils.getString(32209) % utils.getSetting("mysql_db"), xbmc.LOGERROR)
             else:
-                utils.showNotification(utils.getString(32108), err.msg.decode('utf-8'), xbmc.LOGERROR)
+                utils.showNotification(utils.getString(32108), err.args[1], xbmc.LOGERROR)
             buggalo.addExtraData('db_connstatus', 'mysql error, closed')
             self.close_db(3)
             return 1
